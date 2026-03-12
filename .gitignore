@@ -1,0 +1,48 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+Testing/
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE files
+.idea/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+*.bak
+
+# Dependency build artifacts
+_deps/
+
+# Documentation build output
+docs/html/
+docs/latex/
+
+# Sanitizer/ profiler output
+*.log
+*.profraw
+*.profdata
