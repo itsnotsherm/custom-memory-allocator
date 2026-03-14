@@ -38,7 +38,8 @@ if (ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Library Target
-add_library(allocators INTERFACE)
+add_library(allocators INTERFACE
+        include/utils.hpp)
 
 target_include_directories(allocators
         INTERFACE
