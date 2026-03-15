@@ -42,6 +42,23 @@ TEST(AlignUp, IsConstexpr) {
     EXPECT_EQ(result, 16u);
 }
 
+TEST(AlignUp, LargeAlignments) {
+    EXPECT_EQ(alloc::align_up(1,    64),   64u);   // cache line
+    EXPECT_EQ(alloc::align_up(64,   64),   64u);   // already aligned
+    EXPECT_EQ(alloc::align_up(65,   64),   128u);
+    EXPECT_EQ(alloc::align_up(1,    4096), 4096u); // page
+    EXPECT_EQ(alloc::align_up(4096, 4096), 4096u); // already aligned
+    EXPECT_EQ(alloc::align_up(4097, 4096), 8192u);
+}
+
+TEST(AlignUp, NearOverflowBoundary) {
+    // MAX_SIZE - 7 is the largest value safely alignable to 8; it is itself aligned to 8
+    constexpr std::size_t val = SIZE_MAX - 7;
+    EXPECT_EQ(alloc::align_up(val, 8), val);
+    // One below: MAX_SIZE - 8, not aligned to 8, rounds up to MAX_SIZE - 7
+    EXPECT_EQ(alloc::align_up(SIZE_MAX - 8, 8), val);
+}
+
 /* is_aligned */
 TEST(IsAligned, AlignedAddressesReturnTrue) {
     EXPECT_TRUE(alloc::is_aligned(0,   4));
@@ -90,3 +107,32 @@ TEST(Utils, AlignUpResultSatisfiesIsAligned) {
         }
     }
 }
+
+/* contract violations - only active in debug builds */
+#ifndef NDEBUG
+TEST(AlignUpDeath, ZeroAlignmentAborts) {
+    EXPECT_DEATH((void) alloc::align_up(8, 0), "");
+}
+
+TEST(AlignUpDeath, NonPowerOfTwoAlignmentAborts) {
+    EXPECT_DEATH((void) alloc::align_up(8, 3), "");
+    EXPECT_DEATH((void) alloc::align_up(8, 5), "");
+    EXPECT_DEATH((void) alloc::align_up(8, 6), "");
+}
+
+TEST(AlignUpDeath, OverflowAborts) {
+    // MAX_SIZE - 6 cannot be aligned to 8 without wrapping
+    EXPECT_DEATH((void) alloc::align_up(SIZE_MAX - 6, 8), "");
+    EXPECT_DEATH((void) alloc::align_up(SIZE_MAX, 8), "");
+}
+
+TEST(IsAlignedDeath, ZeroAlignmentAborts) {
+    EXPECT_DEATH((void) alloc::is_aligned(8, 0), "");
+}
+
+TEST(IsAlignedDeath, NonPowerOfTwoAlignmentAborts) {
+    EXPECT_DEATH((void) alloc::is_aligned(8, 3), "");
+    EXPECT_DEATH((void) alloc::is_aligned(8, 5), "");
+    EXPECT_DEATH((void) alloc::is_aligned(8, 6), "");
+}
+#endif
