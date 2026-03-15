@@ -5,6 +5,7 @@
 #include <cstdint>
 
 namespace alloc {
+    // TODO: docs on align_up bitwise logic
     [[nodiscard]] constexpr std::size_t align_up(std::size_t value, std::size_t alignment) {
         /* alignment must be non-zero and a power of two */
         assert(alignment != 0);
