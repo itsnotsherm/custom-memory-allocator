@@ -39,7 +39,8 @@ endif()
 
 # Library Target
 add_library(allocators INTERFACE
-        include/utils.hpp)
+        include/utils.hpp
+        include/linear_allocator.hpp)
 
 target_include_directories(allocators
         INTERFACE
