@@ -1,6 +1,7 @@
 # Test Executable
 add_executable(allocator_tests
-    test.cpp
+        test_linear_allocator.cpp
+        test_utils.cpp
 )
 
 target_link_libraries(allocator_tests
