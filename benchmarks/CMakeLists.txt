@@ -1,6 +1,7 @@
 # ─── Benchmark Executable ────────────────────────────────────────────────────
 add_executable(allocator_benchmarks
         benchmark.cpp
+        bench_linear_allocator.cpp
 )
 
 target_link_libraries(allocator_benchmarks
