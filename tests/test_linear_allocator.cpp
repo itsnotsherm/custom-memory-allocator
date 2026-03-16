@@ -109,6 +109,14 @@ TEST(TestLinearAllocator, ExhaustionReturnsNull) {
     EXPECT_EQ(a.allocate(1), nullptr);
 }
 
+TEST(TestLinearAllocator, AllocateMaxSize) {
+    alloc::LinearAllocator a{64};
+    const std::size_t remaining = a.remaining();
+    auto* p = a.allocate(remaining);
+    EXPECT_NE(p, nullptr);
+    EXPECT_EQ(a.remaining(), 0u);
+}
+
 TEST(TestLinearAllocator, FailedAllocationDoesNotChangeState) {
     alloc::LinearAllocator a{32};
     while (a.allocate(8) != nullptr) {}
@@ -261,6 +269,17 @@ TEST(TestLinearAllocator, MoveAssignmentFreesDestinationOldBuffer) {
     alloc::LinearAllocator dst{1024};   // large buffer — must be freed on assignment
     dst = std::move(src);
     EXPECT_GE(dst.capacity(), 256u);
+}
+
+/* LinearAllocator - reading/writing allocated memory */
+TEST(TestLinearAllocator, AllocatedMemoryIsUsable) {
+    alloc::LinearAllocator a{256};
+    auto* p1 = a.allocate(16);
+    EXPECT_NE(p1, nullptr);
+    const auto* val = new (p1) int{23};
+    EXPECT_EQ(*val, 23);
+    (void) a.allocate(16);
+    EXPECT_EQ(*val, 23);
 }
 
 /* contract violations - only active in debug builds */
