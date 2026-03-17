@@ -16,7 +16,7 @@ namespace alloc {
      * @param alignment Alignment boundary in bytes. Must be a non-zero power of two.
      * @return The smallest multiple of @p alignment that is >= @p value.
      */
-    [[nodiscard]] constexpr std::size_t align_up(std::size_t value, std::size_t alignment) {
+    [[nodiscard]] constexpr std::size_t align_up(std::size_t value, std::size_t alignment) noexcept {
         /* alignment must be non-zero and a power of two */
         assert(alignment != 0);
         assert((alignment & (alignment - 1)) == 0);
@@ -36,7 +36,7 @@ namespace alloc {
      * @param alignment Alignment boundary in bytes. Must be a non-zero power of two.
      * @return `true` if @p ptr is a multiple of @p alignment, `false` otherwise.
      */
-    [[nodiscard]] constexpr bool is_aligned(std::uintptr_t ptr, std::size_t alignment) {
+    [[nodiscard]] constexpr bool is_aligned(std::uintptr_t ptr, std::size_t alignment) noexcept {
         /* alignment must be non-zero and a power of two */
         assert(alignment != 0);
         assert((alignment & (alignment - 1)) == 0);
