@@ -9,7 +9,18 @@
 #include "utils.hpp"
 
 namespace alloc {
-    // TODO: add Doxygen comments
+    /**
+     * @brief A fast, non-freeing linear (bump pointer) allocator.
+     *
+     * Allocates memory by advancing a pointer through a contiguous buffer acquired during construction.
+     * Individual allocations cannot be freed; the entire arena is reclaimed at once via reset().
+     *
+     * Best suited for batch-lifetime workloads where
+     * many short-lived objects share a common deallocation point
+     * (e.g. per-frame game data, request-scoped server processing).
+     *
+     * Not copyable. Move-only ownership semantics.
+     */
     class LinearAllocator {
     private:
         std::byte* buffer_{nullptr};
@@ -20,23 +31,72 @@ namespace alloc {
         std::size_t peak_usage_{0};
 
     public:
+        /**
+         * @brief Constructs a LinearAllocator with the given capacity.
+         *
+         * The actual allocated size is rounded up to the platform's maximum alignment boundary.
+         *
+         * @param size Minimum capacity in bytes. Must be greater than zero.
+         * @throws std::bad_alloc if the underlying allocation fails.
+         */
         explicit LinearAllocator(std::size_t size);
 
+        /// @brief Copy construction is disabled; use move semantics instead.
         LinearAllocator(const LinearAllocator&) = delete;
+        /// @brief Copy assignment is disabled; use move semantics instead.
         LinearAllocator& operator=(const LinearAllocator&) = delete;
 
+        /**
+         * @brief Move constructor. Transfers ownership of the buffer.
+         * @param other The allocator to move from. Left in a valid but empty state.
+         */
         LinearAllocator(LinearAllocator&& other) noexcept;
+
+        /**
+         * @brief Move assignment operator. Frees the current buffer, then takes ownership.
+         * @param other The allocator to move from. Left in a valid but empty state.
+         * @return Reference to this allocator.
+         */
         LinearAllocator& operator=(LinearAllocator&& other) noexcept;
 
+        /// @brief Destructor. Frees the backing buffer (safe to call on moved-from instances).
         ~LinearAllocator();
 
+        /**
+         * @brief Allocates a block of memory from the arena.
+         *
+         * Advances the internal bump pointer by the requested size (including any alignment padding).
+         * Returns nullptr on failure rather than throwing.
+         *
+         * @param size      Number of bytes to allocate. Returns nullptr if zero.
+         * @param alignment Required alignment in bytes. Must be a power of two.
+         *                  Defaults to alignof(std::max_align_t).
+         * @return Pointer to the allocated block, or nullptr if the arena is exhausted or @p size is zero.
+         */
         [[nodiscard]] std::byte* allocate(std::size_t size, std::size_t alignment=alignof(std::max_align_t)) noexcept;
+
+        /**
+         * @brief Resets the allocator, reclaiming all memory at once.
+         *
+         * Sets the bump pointer and allocation count back to zero.
+         *
+         * @note Peak usage is preserved across resets.
+         */
         void reset() noexcept;
 
+        /// @return Total capacity of the backing buffer in bytes.
         [[nodiscard]] std::size_t capacity() const noexcept;
+
+        /// @return Number of allocations in the current cycle (resets to zero on reset()).
         [[nodiscard]] std::size_t allocation_count() const noexcept;
+
+        /// @return Highest number of bytes ever used (persists across reset() calls).
         [[nodiscard]] std::size_t peak_usage() const noexcept;
+
+        /// @return Number of bytes currently in use.
         [[nodiscard]] std::size_t used() const noexcept;
+
+        /// @return Number of bytes still available for allocation.
         [[nodiscard]] std::size_t remaining() const noexcept;
     };
 
