@@ -40,7 +40,9 @@ endif()
 # Library Target
 add_library(allocators INTERFACE
         include/utils.hpp
-        include/linear_allocator.hpp)
+        include/linear_allocator.hpp
+        include/pool_allocator.hpp
+)
 
 target_include_directories(allocators
         INTERFACE
