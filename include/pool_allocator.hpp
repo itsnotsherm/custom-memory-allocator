@@ -26,6 +26,10 @@ namespace alloc {
         static constexpr std::size_t kBlockSize =
             align_up(std::max(sizeof(T), sizeof(FreeBlock)), kBlockAlignment);
 
+        static_assert(kBlockSize >= sizeof(T), "kBlockSize can hold at least T");
+        static_assert(kBlockSize >= sizeof(FreeBlock), "kBlockSize can hold free list pointer");
+        static_assert((kBlockAlignment & (kBlockAlignment-1)) == 0);
+
         explicit PoolAllocator(std::size_t blocks);
 
         PoolAllocator(const PoolAllocator&) = delete;
