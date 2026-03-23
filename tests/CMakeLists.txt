@@ -1,6 +1,7 @@
 # Test Executable
 add_executable(allocator_tests
         test_linear_allocator.cpp
+        test_pool_allocator.cpp
         test_utils.cpp
 )
 
