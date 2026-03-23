@@ -44,6 +44,17 @@ namespace alloc {
         [[nodiscard]] std::size_t free_blocks() const noexcept;
         [[nodiscard]] std::size_t allocated_blocks() const noexcept;
         [[nodiscard]] std::size_t peak_usage() const noexcept;
+
+    private:
+        void init_free_list() noexcept {
+            free_list_ = nullptr;
+            for (std::size_t i = 0; i < total_blocks_; ++i) {
+                auto* free_block = reinterpret_cast<FreeBlock*>(buffer_ + i * kBlockSize);
+                free_block->next = free_list_;
+                free_list_ = free_block;
+            }
+            allocated_blocks_ = 0;
+        }
     };
 
     template <class T>
@@ -56,11 +67,7 @@ namespace alloc {
 
         buffer_end_ = buffer_ + blocks * kBlockSize;
         total_blocks_ = blocks;
-        for (std::size_t i = 0; i < total_blocks_; ++i) {
-            auto free_block = reinterpret_cast<FreeBlock*>(buffer_ + i * kBlockSize);
-            free_block->next = free_list_;
-            free_list_ = free_block;
-        }
+        init_free_list();
         assert(free_list_ != nullptr);
     }
 
@@ -126,14 +133,7 @@ namespace alloc {
 
     template<class T>
     inline void PoolAllocator<T>::reset() noexcept {
-        free_list_ = nullptr;
-        for (std::size_t i = 0; i < total_blocks_; ++i) {
-            auto free_block = reinterpret_cast<FreeBlock*>(buffer_ + i * kBlockSize);
-            free_block->next = free_list_;
-            free_list_ = free_block;
-        }
-
-        allocated_blocks_ = 0;
+        init_free_list();
     }
 
     template <class T>
