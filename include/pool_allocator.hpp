@@ -28,7 +28,7 @@ namespace alloc {
 
         static_assert(kBlockSize >= sizeof(T), "kBlockSize can hold at least T");
         static_assert(kBlockSize >= sizeof(FreeBlock), "kBlockSize can hold free list pointer");
-        static_assert((kBlockAlignment & (kBlockAlignment-1)) == 0);
+        static_assert((kBlockAlignment & (kBlockAlignment-1)) == 0, "kBlockAlignment must be power-of-2");
 
         explicit PoolAllocator(std::size_t blocks);
 
