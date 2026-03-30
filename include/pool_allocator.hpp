@@ -5,9 +5,30 @@
 #include "utils.hpp"
 
 namespace alloc {
+    /**
+     * @brief A fixed-capacity pool allocator for uniform-sized objects of type @p T.
+     *
+     * Manages a contiguous buffer divided into equally-sized, aligned blocks. Free blocks
+     * are tracked via an intrusive singly-linked list, enabling O(1) allocation and
+     * deallocation with no fragmentation.
+     *
+     * Best suited for workloads that repeatedly allocate and free many objects of the same
+     * type (e.g. particle systems, node-based data structures, object pools in game engines).
+     *
+     * Not copyable. Move-only ownership semantics.
+     *
+     * @tparam T The type of objects managed by this pool. Each block is sized and aligned
+     *           to hold exactly one @p T.
+     */
     template <class T>
     class PoolAllocator {
     private:
+        /**
+         * @brief Intrusive free-list node overlaid on each unused block.
+         *
+         * When a block is free, its memory is reinterpreted as a FreeBlock so the pool
+         * can chain all free blocks together without any external bookkeeping.
+         */
         struct FreeBlock {
             FreeBlock* next;
         };
@@ -23,33 +44,100 @@ namespace alloc {
     public:
         static constexpr std::size_t kBlockAlignment =
             std::max(alignof(T), alignof(FreeBlock));
+
         static constexpr std::size_t kBlockSize =
             align_up(std::max(sizeof(T), sizeof(FreeBlock)), kBlockAlignment);
 
-        static_assert(kBlockSize >= sizeof(T), "kBlockSize can hold at least T");
-        static_assert(kBlockSize >= sizeof(FreeBlock), "kBlockSize can hold free list pointer");
-        static_assert((kBlockAlignment & (kBlockAlignment-1)) == 0, "kBlockAlignment must be power-of-2");
+        static_assert(kBlockSize >= sizeof(T), "block must be large enough to hold T");
+        static_assert(kBlockSize >= sizeof(FreeBlock), "block must be large enough to hold free list pointer");
+        static_assert((kBlockAlignment & (kBlockAlignment-1)) == 0, "block alignment must be power-of-2");
 
+        /**
+         * @brief Constructs a PoolAllocator with the given number of blocks.
+         *
+         * Allocates a contiguous, aligned buffer large enough to hold @p blocks objects
+         * of type @p T, then initializes the free list so every block is available.
+         *
+         * @param blocks Number of blocks for provision. Must be greater than zero.
+         * @throws std::bad_alloc if the underlying allocation fails.
+         */
         explicit PoolAllocator(std::size_t blocks);
 
+        /// @brief Copy construction is disabled; use move semantics instead.
         PoolAllocator(const PoolAllocator&) = delete;
+        /// @brief Copy assignment is disabled; use move semantics instead.
         PoolAllocator& operator=(const PoolAllocator&) = delete;
 
-        PoolAllocator(PoolAllocator&&) noexcept;
-        PoolAllocator& operator=(PoolAllocator&&) noexcept;
+        /**
+         * @brief Move constructor. Transfers ownership of the backing buffer.
+         * @param other The allocator to move from. Left in a valid but empty state.
+         */
+        PoolAllocator(PoolAllocator&& other) noexcept;
 
+        /**
+         * @brief Move assignment operator. Frees the current buffer, then takes ownership.
+         * @param other The allocator to move from. Left in a valid but empty state.
+         * @return Reference to this allocator.
+         */
+        PoolAllocator& operator=(PoolAllocator&& other) noexcept;
+
+        /// @brief Destructor. Frees the backing buffer (safe to call on moved-from instances).
         ~PoolAllocator();
 
+        /**
+         * @brief Allocates one block from the pool.
+         *
+         * Pops the head of the free list and returns it as a pointer to @p T.
+         * Returns nullptr rather than throwing if the pool is exhausted.
+         *
+         * @pre The allocator must not have been moved-from.
+         *
+         * @note The returned memory is uninitialized. Construct an object in-place with
+         *       placement new before use.
+         * @return Pointer to an uninitialized block sized and aligned for @p T,
+         *         or nullptr if no free blocks remain.
+         */
         [[nodiscard]] T* allocate() noexcept;
+
+        /**
+         * @brief Returns a previously allocated block to the pool.
+         *
+         * Pushes @p ptr back onto the head of the free list in O(1).
+         *
+         * @note Does not invoke the destructor of @p T. Call it explicitly before
+         *       deallocating if the object has been constructed.
+         * @param ptr Pointer previously returned by allocate(). Must not be nullptr,
+         *            must belong to this pool, and must be block-aligned within the buffer.
+         */
         void deallocate(T* ptr) noexcept;
+
+        /**
+         * @brief Resets the pool, making all blocks available again.
+         *
+         * Rebuilds the free list from scratch so every block is considered free.
+         * Resets the allocated block counter but preserves peak_usage().
+         *
+         * @note Does not invoke destructors for any live objects. Ensure all
+         *       constructed objects are destroyed before calling reset().
+         */
         void reset() noexcept;
 
+        /// @return Total number of blocks in the pool (fixed at construction).
         [[nodiscard]] std::size_t total_blocks() const noexcept;
+
+        /// @return Number of blocks currently available for allocation.
         [[nodiscard]] std::size_t free_blocks() const noexcept;
+
+        /// @return Number of blocks currently allocated.
         [[nodiscard]] std::size_t allocated_blocks() const noexcept;
+
+        /// @return Highest number of simultaneously allocated blocks (persists across reset() calls).
         [[nodiscard]] std::size_t peak_usage() const noexcept;
 
     private:
+        /**
+         * @note Does not modify peak_usage_ (lifetime metric).
+         */
         void init_free_list() noexcept {
             free_list_ = nullptr;
             for (std::size_t i = 0; i < total_blocks_; ++i) {
